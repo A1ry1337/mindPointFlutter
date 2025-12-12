@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:te4st_proj_flut/core/services/auth_service.dart';
+import 'package:te4st_proj_flut/core/services/storage_service.dart';
+import 'package:te4st_proj_flut/models/user_model.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
@@ -56,8 +58,10 @@ class _LoginPageState extends State<LoginPage> {
         password: _password,
       );
 
+      UserModel? user = await StorageService.getUser();
+
       if (context.mounted) {
-        context.go('/');
+        user?.isManager == true ? context.go('/manager_summary') : context.go('/employee_summary');
       }
     } catch (e) {
       if (context.mounted) {

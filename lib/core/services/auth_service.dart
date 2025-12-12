@@ -1,5 +1,7 @@
 
-
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:te4st_proj_flut/core/routers/app_router.dart';
 import 'package:te4st_proj_flut/core/services/storage_service.dart';
 import 'package:te4st_proj_flut/models/user_model.dart';
 
@@ -7,6 +9,7 @@ import 'api_service.dart';
 
 class AuthService {
   final ApiService _apiService = ApiService();
+  static GlobalKey<NavigatorState> get navigatorKey => AppRouter.navigatorKey;
 
   Future<UserModel> login({
     String? username,
@@ -105,6 +108,12 @@ class AuthService {
   Future<void> logout() async {
     print('🚪 Начало процесса выхода...');
     await StorageService.clearStorage();
+
+    final context = navigatorKey.currentContext;
+
+    if (context != null && context.mounted) {
+      context.go('/login');
+    }
     print('✅ Выход выполнен. Данные очищены.');
   }
 
@@ -124,14 +133,5 @@ class AuthService {
       print('❌ Пользователь не найден в хранилище');
     }
     return user;
-  }
-
-  Future<Map<String, dynamic>> hello() async {
-    try {
-      final response = await _apiService.get('/auth/hello', authRequired: true);
-      return response;
-    } catch (e) {
-      rethrow;
-    }
   }
 }
