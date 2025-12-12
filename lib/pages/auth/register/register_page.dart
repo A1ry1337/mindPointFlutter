@@ -304,7 +304,7 @@ class _RegisterPageState extends State<RegisterPage>
                                 ),
                               ),
                               AnimatedPositioned(
-                                duration: const Duration(milliseconds: 200),
+                                duration: const Duration(milliseconds: 300),
                                 curve: Curves.easeInOut,
                                 left: _selectedTab == 0 ? 0.0 : MediaQuery.of(context).size.width / 2 - 24,
                                 bottom: 0,
