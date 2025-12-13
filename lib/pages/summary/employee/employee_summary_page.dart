@@ -4,7 +4,7 @@ import 'package:te4st_proj_flut/core/layout/AppLayout.dart';
 import 'package:te4st_proj_flut/core/services/auth_service.dart';
 import 'package:te4st_proj_flut/core/services/storage_service.dart';
 import 'package:te4st_proj_flut/models/user_model.dart';
-import 'package:te4st_proj_flut/core/services/dass_service.dart'; // Импортируйте DassService
+import 'package:te4st_proj_flut/core/services/dass_service.dart';
 
 class EmployeeSummaryPage extends StatefulWidget {
   const EmployeeSummaryPage({Key? key}) : super(key: key);
@@ -17,7 +17,6 @@ class _EmployeeSummaryPageState extends State<EmployeeSummaryPage> {
   final DassService _dassService = DassService();
   bool _isLoading = true;
   bool _testCompletedToday = false;
-  String? _lastCompletionTime;
 
   @override
   void initState() {
@@ -61,184 +60,182 @@ class _EmployeeSummaryPageState extends State<EmployeeSummaryPage> {
   }
 
   Widget _buildTestCompletedCard() {
-    return Container(
-      margin: const EdgeInsets.only(left: 16, right: 16, bottom: 24),
-      decoration: BoxDecoration(
-          color: Color(0xFFF5F7FF),
-          borderRadius: BorderRadius.circular(20.0),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFFB6B1BA),
-              blurRadius: 10,
-              spreadRadius: -5,
-              offset: const Offset(0, 10),
-            ),
-          ]
-      ),
-      width: double.infinity,
-      child: Padding(
-        padding: const EdgeInsets.only(top: 16, bottom: 24, left: 24, right: 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
+    return Column(
+      children: [
+        // Цветок
+        Container(
+          child: Image.asset(
+            'assets/images/login/flower.png',
+          ),
+        ),
+        // Контейнер с галочкой
+        Stack(
+          clipBehavior: Clip.none,
           children: [
-            const Icon(
-              Icons.check_circle_outline,
-              size: 64,
-              color: Colors.green,
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Тест уже пройден!',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF4D4D4D),
+            // Белый контейнер
+            Container(
+              margin: const EdgeInsets.only(left: 16, right: 16, bottom: 24),
+              decoration: BoxDecoration(
+                color: Color(0xFFF5F7FF),
+                borderRadius: BorderRadius.circular(20.0),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFB6B1BA),
+                    blurRadius: 10,
+                    spreadRadius: -5,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Вы уже прошли тестирование сегодня. Следующий тест будет доступен завтра.',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Спасибо за ваше участие!',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF722ED1),
-              ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
               width: double.infinity,
-              height: 45,
-              child: ElevatedButton(
-                onPressed: () {
-                  // Можно добавить переход на страницу с результатами
-                  // context.go('/results');
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  elevation: 4,
-                  textStyle: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+              child: Padding(
+                padding: const EdgeInsets.only(top: 40, bottom: 24, left: 24, right: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'Сегодня вы уже прошли тестирование!',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF4D4D4D),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Повторное прохождение будет доступно завтра. Регулярное выполнение поможет вам объективно отслеживать результаты.',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey[600],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
-                child: const Text('Посмотреть результаты'),
+              ),
+            ),
+            // Галочка поверх контейнера
+            Positioned(
+              top: -41.5,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Image.asset(
+                  'assets/images/test_dass/complete.png',
+                  width: 83,
+                  height: 83,
+                  fit: BoxFit.contain,
+                ),
               ),
             ),
           ],
         ),
-      ),
+      ],
     );
   }
 
   Widget _buildTestAvailableCard() {
-    return Container(
-      margin: const EdgeInsets.only(left: 16, right: 16, bottom: 24),
-      decoration: BoxDecoration(
-          color: Color(0xFFF5F7FF),
-          borderRadius: BorderRadius.circular(20.0),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFFB6B1BA),
-              blurRadius: 10,
-              spreadRadius: -5,
-              offset: const Offset(0, 10),
-            ),
-          ]
-      ),
-      width: double.infinity,
-      child: Padding(
-        padding: const EdgeInsets.only(top: 16, bottom: 24, left: 24, right: 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const Text(
-              'Перед вами тест из 9 вопросов',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF4D4D4D),
+    return Column(
+      children: [
+        // Цветок
+        Container(
+          child: Image.asset(
+            'assets/images/login/flower.png',
+          ),
+        ),
+        // Контейнер с тестом
+        Container(
+          margin: const EdgeInsets.only(left: 16, right: 16, bottom: 24),
+          decoration: BoxDecoration(
+            color: Color(0xFFF5F7FF),
+            borderRadius: BorderRadius.circular(20.0),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFB6B1BA),
+                blurRadius: 10,
+                spreadRadius: -5,
+                offset: const Offset(0, 10),
               ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Пожалуйста, отвечайте честно, исходя из того, что вы чувствовали со вчерашнего дня. Ваши ответы помогут системе лучше понять ваше самочувствие. Это займёт менее 1 минуты.',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[700],
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              height: 45,
-              child: ElevatedButton(
-                onPressed: () => context.go('/test_dass'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF722ED1),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  elevation: 4,
-                  shadowColor: const Color(0xFF722ED1).withOpacity(0.3),
-                  textStyle: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+            ],
+          ),
+          width: double.infinity,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 16, bottom: 24, left: 24, right: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const Text(
+                  'Перед вами тест из 9 вопросов',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF4D4D4D),
                   ),
                 ),
-                child: const Text('Пройти тестирование'),
-              ),
+                const SizedBox(height: 16),
+                Text(
+                  'Пожалуйста, отвечайте честно, исходя из того, что вы чувствовали со вчерашнего дня. Ваши ответы помогут системе лучше понять ваше самочувствие. Это займёт менее 1 минуты.',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[700],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 45,
+                  child: ElevatedButton(
+                    onPressed: () => context.go('/test_dass'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF722ED1),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      elevation: 4,
+                      shadowColor: const Color(0xFF722ED1).withOpacity(0.3),
+                      textStyle: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    child: const Text('Пройти тестирование'),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return AppLayout(
-        child: Stack(
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage('assets/images/background.png'),
-                  fit: BoxFit.cover,
-                  colorFilter: ColorFilter.mode(
-                    Colors.white,
-                    BlendMode.darken,
-                  ),
+      child: Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/images/background.png'),
+                fit: BoxFit.cover,
+                colorFilter: ColorFilter.mode(
+                  Colors.white,
+                  BlendMode.darken,
                 ),
               ),
             ),
-            Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Container(
-                  child: Image.asset(
-                    'assets/images/login/flower.png',
-                  ),
-                ),
-                _buildContent(),
-              ],
-            ),
-          ],
-        )
+          ),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              _buildContent(),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

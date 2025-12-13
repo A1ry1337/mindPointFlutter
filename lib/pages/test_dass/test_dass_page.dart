@@ -166,9 +166,8 @@ class _TestDassPageState extends State<TestDassPage> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        Image.asset('assets/images/test_dass/cloud.png'),
         Image.asset('assets/images/test_dass/pucha_think.png'),
-        const SizedBox(height: 33),
+        const SizedBox(height: 25),
         Container(
           margin: const EdgeInsets.only(left: 16, right: 16, bottom: 24),
           decoration: BoxDecoration(
@@ -185,7 +184,7 @@ class _TestDassPageState extends State<TestDassPage> {
           ),
           width: double.infinity,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
             child: Column(
               children: [
                 Text.rich(
@@ -220,30 +219,47 @@ class _TestDassPageState extends State<TestDassPage> {
 
                     return Container(
                       margin: const EdgeInsets.only(bottom: 10),
-                      child: SizedBox(
-                        width: double.infinity,
-                        height: 36,
-                        child: ElevatedButton(
-                          onPressed: () => _answerQuestion(index),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: isSelected
-                                ? const Color(0xFF722ED1).withOpacity(0.1)
-                                : Colors.white,
-                            foregroundColor: isSelected
-                                ? const Color(0xFF722ED1)
-                                : Colors.black,
-                            shape: RoundedRectangleBorder(
+                      child: ElevatedButton(
+                        onPressed: () => _answerQuestion(index),
+                        style: ButtonStyle(
+                          backgroundColor: MaterialStateProperty.resolveWith((states) {
+                            if (isSelected) return const Color(0xFF722ED1).withOpacity(0.1);
+                            return Colors.white;
+                          }),
+                          foregroundColor: MaterialStateProperty.resolveWith((states) {
+                            if (isSelected) return const Color(0xFF722ED1);
+                            return Colors.black;
+                          }),
+                          overlayColor: MaterialStateProperty.resolveWith((states) {
+                            if (isSelected) return Colors.transparent;
+                            if (states.contains(MaterialState.hovered)) return const Color(0xFF722ED1).withOpacity(0.05);
+                            if (states.contains(MaterialState.pressed)) return const Color(0xFF722ED1).withOpacity(0.1);
+                            return null;
+                          }),
+                          shape: MaterialStateProperty.resolveWith((states) {
+                            return RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(15),
                               side: BorderSide(
-                                color: isSelected
-                                    ? const Color(0xFF722ED1)
-                                    : Colors.grey.shade300,
-                                width: isSelected ? 2 : 1,
+                                color: isSelected ? const Color(0xFF722ED1) : Colors.grey.shade300,
+                                width: 1,
                               ),
+                            );
+                          }),
+                          elevation: MaterialStateProperty.all(0),
+                          minimumSize: MaterialStateProperty.all(const Size(double.infinity, 50)),
+                          padding: MaterialStateProperty.all(const EdgeInsets.symmetric(vertical: 12, horizontal: 16)),
+                        ),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Text(
+                            text,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              height: 1.2,
                             ),
-                            elevation: 1,
                           ),
-                          child: Text(text),
                         ),
                       ),
                     );
@@ -256,6 +272,22 @@ class _TestDassPageState extends State<TestDassPage> {
                       Expanded(
                         child: ElevatedButton(
                           onPressed: _previousQuestion,
+                          style: ButtonStyle(
+                            backgroundColor: MaterialStateProperty.all(Colors.white),
+                            foregroundColor: MaterialStateProperty.all(const Color(0xFF722ED1)),
+                            overlayColor: MaterialStateProperty.resolveWith((states) {
+                              if (states.contains(MaterialState.hovered)) return const Color(0xFF722ED1).withOpacity(0.05);
+                              if (states.contains(MaterialState.pressed)) return const Color(0xFF722ED1).withOpacity(0.1);
+                              return null;
+                            }),
+                            shape: MaterialStateProperty.all(RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15),
+                              side: BorderSide(color: Colors.grey.shade300),
+                            )),
+                            elevation: MaterialStateProperty.all(0),
+                            minimumSize: MaterialStateProperty.all(const Size(double.infinity, 50)),
+                            padding: MaterialStateProperty.all(const EdgeInsets.symmetric(vertical: 12)),
+                          ),
                           child: const Text('Назад'),
                         ),
                       ),
@@ -264,6 +296,15 @@ class _TestDassPageState extends State<TestDassPage> {
                     Expanded(
                       child: ElevatedButton(
                         onPressed: _isSubmitting ? null : _nextQuestion,
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 50),
+                          backgroundColor: const Color(0xFF722ED1),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
                         child: _isSubmitting
                             ? const SizedBox(
                           width: 20,
@@ -274,20 +315,15 @@ class _TestDassPageState extends State<TestDassPage> {
                           ),
                         )
                             : Text(
-                          _currentQuestionIndex ==
-                              questions.length - 1
+                          _currentQuestionIndex == questions.length - 1
                               ? 'Завершить'
-                              : 'Далее',
+                              : 'Выбрать',
                         ),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
-                LinearProgressIndicator(
-                  value:
-                  (_currentQuestionIndex + 1) / questions.length.toDouble(),
-                ),
               ],
             ),
           ),
@@ -298,23 +334,97 @@ class _TestDassPageState extends State<TestDassPage> {
 
   Widget _buildCompletionScreen() {
     return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        const Icon(Icons.check_circle, size: 80, color: Color(0xFF722ED1)),
-        const SizedBox(height: 20),
-        const Text(
-          'Спасибо за прохождение теста!',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          textAlign: TextAlign.center,
+        Container(
+          child: Image.asset(
+            'assets/images/test_dass/pucha_happy.png',
+          ),
         ),
-        const SizedBox(height: 20),
-        ElevatedButton(
-          onPressed: () => context.go('/'),
-          child: const Text('Вернуться на главную'),
-        ),
-        TextButton(
-          onPressed: _restartTest,
-          child: const Text('Пройти ещё раз'),
+        SizedBox(height: 150),
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            // Белый контейнер
+            Container(
+              margin: const EdgeInsets.only(left: 16, right: 16, bottom: 24),
+              decoration: BoxDecoration(
+                color: Color(0xFFF5F7FF),
+                borderRadius: BorderRadius.circular(20.0),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFB6B1BA),
+                    blurRadius: 10,
+                    spreadRadius: -5,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              width: double.infinity,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 24, bottom: 24, left: 24, right: 24),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Спасибо за прохождение теста!',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF4D4D4D),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Результаты тестирования сохранены. Вы можете пройти тест снова завтра.',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 45,
+                      child: ElevatedButton(
+                        onPressed: () => context.go('/'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF722ED1),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          elevation: 4,
+                          shadowColor: const Color(0xFF722ED1).withOpacity(0.3),
+                          textStyle: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        child: const Text('Вернуться на главную'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // Галочка поверх контейнера
+            Positioned(
+              top: -41.5,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Image.asset(
+                  'assets/images/test_dass/complete.png',
+                  width: 83,
+                  height: 83,
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );

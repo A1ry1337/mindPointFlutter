@@ -3,7 +3,6 @@ import 'package:te4st_proj_flut/core/services/api_service.dart';
 class DassService {
   final ApiService _apiService = ApiService();
 
-  // Получить 9 случайных вопросов
   Future<List<DassQuestion>> getRandomQuestions() async {
     try {
       final response = await _apiService.get('/dass9/random');
@@ -19,7 +18,6 @@ class DassService {
     }
   }
 
-  // Отправить результаты теста
   Future<Map<String, dynamic>> submitResults({
     required int depression,
     required int stress,
@@ -44,7 +42,6 @@ class DassService {
     }
   }
 
-  // Проверить, пройден ли тест сегодня
   Future<bool> checkIfTestCompletedToday() async {
     try {
       final response = await _apiService.get(
@@ -52,11 +49,10 @@ class DassService {
         authRequired: true,
       );
 
-      // Предполагаем, что API возвращает булево значение или строку
       return response['passed_today'] == true;
     } catch (e) {
       print('❌ Ошибка при проверке статуса теста: $e');
-      return false; // В случае ошибки показываем возможность пройти тест
+      return false;
     }
   }
 
