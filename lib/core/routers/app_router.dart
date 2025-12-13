@@ -11,18 +11,26 @@ class AppRouter {
   static final GoRouter router = GoRouter(
     navigatorKey: navigatorKey,
     redirect: (context, state) async {
-      // Проверяем авторизацию
       final authService = AuthService();
       final isLoggedIn = await authService.isLoggedIn();
       final isAuthPage = state.location.startsWith('/login') ||
           state.location.startsWith('/register');
+
+      if (state.location == '/') {
+        if (!isLoggedIn) {
+          return '/login';
+        }
+        final user = await AuthService().getCurrentUser();
+        return user?.isManager == true ? '/manager_summary' : '/employee_summary';
+      }
 
       if (!isLoggedIn && !isAuthPage) {
         return '/login';
       }
 
       if (isLoggedIn && isAuthPage) {
-        return '/';
+        final user = await AuthService().getCurrentUser();
+        return user?.isManager == true ? '/manager_summary' : '/employee_summary';
       }
 
       return null;

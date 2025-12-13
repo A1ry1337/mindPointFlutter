@@ -98,7 +98,7 @@ class _RegisterPageState extends State<RegisterPage>
       );
 
       if (context.mounted) {
-        context.go('/');
+        context.go('/login');
       }
     } catch (e) {
       if (context.mounted) {
@@ -236,7 +236,7 @@ class _RegisterPageState extends State<RegisterPage>
           Container(
             decoration: BoxDecoration(
               image: DecorationImage(
-                image: AssetImage('assets/images/login/background.png'),
+                image: AssetImage('assets/images/background.png'),
                 fit: BoxFit.cover,
                 colorFilter: ColorFilter.mode(
                   Colors.white,

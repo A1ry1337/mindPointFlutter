@@ -44,7 +44,7 @@ class ApiService {
     _log('╚═══════════════════════════════════════════════════════');
   }
 
-  void _logResponse(String method, String url, int statusCode, Map<String, dynamic>? data, String? error) {
+  void _logResponse(String method, String url, int statusCode, dynamic data, String? error) {
     _log('╔═══════════════════════════════════════════════════════');
     _log('║ 📥 RESPONSE: $method $url');
     _log('║ 📊 STATUS CODE: $statusCode ${_getStatusMessage(statusCode)}');
@@ -150,7 +150,7 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> get(String endpoint, {bool authRequired = false, Map<String, String>? queryParams}) async {
+  Future<dynamic> get(String endpoint, {bool authRequired = false, Map<String, String>? queryParams}) async {
 
     String url = '$baseUrl$endpoint';
 
@@ -178,11 +178,13 @@ class ApiService {
       );
       final duration = DateTime.now().difference(startTime);
 
-      Map<String, dynamic>? responseData;
+      dynamic responseData;
+
       try {
         responseData = json.decode(response.body);
       } catch (e) {
-        _log('⚠️ Не удалось распарсить JSON ответ');
+        _log('⚠️ Не удалось распарсить JSON ответ: $e');
+        rethrow;
       }
 
       _log('⏱️ Время выполнения: ${duration.inMilliseconds}ms');
@@ -204,10 +206,16 @@ class ApiService {
       _logResponse('GET', url, response.statusCode, responseData, null);
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        return responseData ?? {'success': true};
+        return responseData;
       } else {
-        final error = responseData?['message'] ?? responseData?['error'] ?? 'Request failed';
-        throw Exception(error);
+        if (responseData is Map<String, dynamic>) {
+          final error = responseData['message'] ??
+              responseData['error'] ??
+              'Request failed';
+          throw Exception(error);
+        } else {
+          throw Exception('Request failed');
+        }
       }
     } catch (e, stackTrace) {
       _logError('GET', url, e, stackTrace);

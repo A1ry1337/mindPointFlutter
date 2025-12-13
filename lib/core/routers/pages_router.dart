@@ -1,6 +1,7 @@
 import 'package:go_router/go_router.dart';
 import 'package:te4st_proj_flut/pages/auth/auth_router.dart';
 import 'package:te4st_proj_flut/pages/summary/summary_router.dart';
+import 'package:te4st_proj_flut/pages/test_dass/test_dass_router.dart';
 
 class PagesRouter {
   static List<GoRoute> getAllRoutes() {
@@ -8,7 +9,8 @@ class PagesRouter {
 
     allRoutes.addAll([
         ...AuthRouter.getRoutes(),
-        ...SummaryRouter.getRoutes()
+        ...SummaryRouter.getRoutes(),
+        ...TestDassRouter.getRoutes(),
     ]);
 
     return allRoutes;
