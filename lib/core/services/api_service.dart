@@ -222,4 +222,64 @@ class ApiService {
       rethrow;
     }
   }
+
+  Future<dynamic> delete(String endpoint, {bool authRequired = false}) async {
+    final url = '$baseUrl$endpoint';
+    final headers = <String, String>{};
+
+    if (authRequired) {
+      final token = await StorageService.getToken();
+      if (token != null) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+    }
+
+    _logRequest('DELETE', url, null, headers);
+
+    try {
+      final startTime = DateTime.now();
+      final response = await http.delete(
+        Uri.parse(url),
+        headers: headers,
+      );
+      final duration = DateTime.now().difference(startTime);
+
+      dynamic responseData;
+      if (response.body.isNotEmpty) {
+        try {
+          responseData = json.decode(response.body);
+        } catch (e) {
+          _log('⚠️ Не удалось распарсить JSON ответ: $e');
+        }
+      }
+
+      _log('⏱️ Время выполнения: ${duration.inMilliseconds}ms');
+
+      if (response.statusCode == 401) {
+        _logResponse('DELETE', url, response.statusCode, responseData, 'Unauthorized - токен истек');
+        await StorageService.clearStorage();
+
+        final context = navigatorKey.currentContext;
+        if (context != null && context.mounted) {
+          _log('🔄 Перенаправление на /login через GoRouter');
+          context.go('/login');
+        }
+        throw Exception('Unauthorized');
+      }
+
+      _logResponse('DELETE', url, response.statusCode, responseData, null);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return responseData ?? {'success': true};
+      } else {
+        final error = responseData is Map<String, dynamic>
+            ? (responseData['message'] ?? responseData['error'] ?? 'Request failed')
+            : 'Request failed';
+        throw Exception(error);
+      }
+    } catch (e, stackTrace) {
+      _logError('DELETE', url, e, stackTrace);
+      rethrow;
+    }
+  }
 }

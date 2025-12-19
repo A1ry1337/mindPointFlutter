@@ -52,3 +52,27 @@ class Team {
     );
   }
 }
+
+class TeamMembersResponse {
+  final Team team;
+  final List<Employee> members;
+  final List<Employee> teamLeads;
+
+  TeamMembersResponse({
+    required this.team,
+    required this.members,
+    required this.teamLeads,
+  });
+
+  factory TeamMembersResponse.fromJson(Map<String, dynamic> json) {
+    return TeamMembersResponse(
+      team: Team.fromJson(json['team']),
+      members: (json['members'] as List)
+          .map((e) => Employee.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      teamLeads: (json['team_leads'] as List)
+          .map((e) => Employee.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}

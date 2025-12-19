@@ -75,4 +75,90 @@ class ManagementService {
 
     return result;
   }
+
+  // Получить список всех команд с участниками и тимлидами
+  Future<List<TeamMembersResponse>> getTeamMembers() async {
+    final response = await _apiService.get(
+      '/management/get_team_members',
+      authRequired: true,
+    );
+    if (response is List) {
+      return response.map((item) => TeamMembersResponse.fromJson(item as Map<String, dynamic>)).toList();
+    }
+    throw Exception('Invalid team members response');
+  }
+
+  // Создать команду
+  Future<void> createTeam(String name) async {
+    await _apiService.post(
+      '/management/create_team',
+      {'name': name},
+      authRequired: true,
+    );
+  }
+
+  //Удалить команду
+  Future<void> deleteTeam(String teamId) async {
+    await _apiService.delete(
+      '/management/delete_team/$teamId',
+      authRequired: true,
+    );
+  }
+
+  // Назначить тимлида
+  Future<void> assignTeamLead(String teamId, String userId) async {
+    await _apiService.post(
+      '/management/assign_team_lead_to_team',
+      {'team_id': teamId, 'user_id': userId},
+      authRequired: true,
+    );
+  }
+
+  // Снять тимлида
+  Future<void> revokeTeamLead(String teamId, String userId) async {
+    await _apiService.post(
+      '/management/revoke_team_lead_from_team',
+      {'team_id': teamId, 'user_id': userId},
+      authRequired: true,
+    );
+  }
+
+  // Удалить участника из команды
+  Future<void> removeMemberFromTeam(String teamId, String userId) async {
+    await _apiService.post(
+      '/management/remove_member_from_team',
+      {'team_id': teamId, 'user_id': userId},
+      authRequired: true,
+    );
+  }
+
+  //Удалить участника из компании
+  Future<void> removeMemberFromCompany(String userId) async {
+    await _apiService.delete(
+      '/management/remove_member_from_company/$userId',
+      authRequired: true,
+    );
+  }
+
+  // Переместить в другую команду
+  Future<void> moveMemberToAnotherTeam({
+    required String userId,
+    required String fromTeamId,
+    required String toTeamId,
+  }) async {
+    await _apiService.post(
+      '/management/move_member_to_another_team',
+      {'user_id': userId, 'from_team_id': fromTeamId, 'to_team_id': toTeamId},
+      authRequired: true,
+    );
+  }
+
+  // Добавить нескольких участников в команду
+  Future<void> addMembersToTeam(String teamId, List<String> userIds) async {
+    await _apiService.post(
+      '/management/add_members_in_team',
+      {'team_id': teamId, 'user_ids': userIds},
+      authRequired: true,
+    );
+  }
 }
