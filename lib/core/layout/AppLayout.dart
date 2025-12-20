@@ -463,19 +463,19 @@ class _AppLayoutState extends State<AppLayout> {
                     if (text.isEmpty) return;
                     try {
                       await requestsService.sendManagerRequest(text);
-                      Navigator.of(ctx).pop(); // Закрываем лист отправки
-                      // Закрываем текущий лист профиля (если открыт)
-                      Navigator.of(context).pop();
-                      // Открываем заново — с обновлёнными данными
-                      _openProfileSheet(context);
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Заявка отправлена!')),
-                        );
-                      }
+
+                      Navigator.of(ctx).pop(); // закрываем лист отправки
+                      Navigator.of(context).pop(); // закрываем профиль
+
+                      _showSnackBar(context, 'Заявка отправлена!');
                     } catch (e) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Ошибка: $e')),
+                      Navigator.of(ctx).pop();
+                      Navigator.of(context).pop();
+
+                      _showSnackBar(
+                        context,
+                        'Данные неверны, заявка не отправлена',
+                        isError: true,
                       );
                     }
                   },
@@ -564,6 +564,23 @@ class _AppLayoutState extends State<AppLayout> {
         ),
       ),
       body: widget.child,
+    );
+  }
+
+  void _showSnackBar(BuildContext context, String message, {bool isError = false}) {
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red : Colors.green,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 3),
+      ),
     );
   }
 }

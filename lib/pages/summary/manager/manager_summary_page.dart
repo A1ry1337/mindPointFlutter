@@ -108,21 +108,6 @@ class _ManagerSummaryPageState extends State<ManagerSummaryPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  /// 🔍 ПОИСК
-                  TextField(
-                    decoration: InputDecoration(
-                      hintText: 'Поиск',
-                      prefixIcon: const Icon(Icons.search),
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
                   /// 📋 ТАБЛИЦА КОМАНД
                   _loading
                       ? const Center(child: CircularProgressIndicator())
