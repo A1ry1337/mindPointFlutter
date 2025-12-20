@@ -283,42 +283,61 @@ class _ManagerSummaryPageState extends State<ManagerSummaryPage> {
                         return Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            InkWell(
-                              onTap: () => _onEditEmployee(e), // <-- вызываем редактирование при нажатии
-                              child: Container(
-                                height: _rowHeight,
-                                padding: const EdgeInsets.symmetric(horizontal: _hPadding),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      flex: 3,
-                                      child: Row(
-                                        children: [
-                                          const SizedBox(width: _employeeIndent),
-                                          Expanded(
-                                            child: Text(
-                                              e.fullname,
-                                              style: const TextStyle(fontSize: 11),
-                                              overflow: TextOverflow.ellipsis,
-                                              maxLines: 1,
-                                            ),
+                            Container(
+                              decoration: BoxDecoration(
+                                borderRadius: isLastEmployee
+                                    ? const BorderRadius.only(
+                                  bottomLeft: Radius.circular(12),
+                                  bottomRight: Radius.circular(12),
+                                )
+                                    : BorderRadius.zero,
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () => _onEditEmployee(e),
+                                  borderRadius: isLastEmployee
+                                      ? const BorderRadius.only(
+                                    bottomLeft: Radius.circular(12),
+                                    bottomRight: Radius.circular(12),
+                                  )
+                                      : BorderRadius.zero,
+                                  child: Container(
+                                    height: _rowHeight,
+                                    padding: const EdgeInsets.symmetric(horizontal: _hPadding),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          flex: 3,
+                                          child: Row(
+                                            children: [
+                                              const SizedBox(width: _employeeIndent),
+                                              Expanded(
+                                                child: Text(
+                                                  e.fullname,
+                                                  style: const TextStyle(fontSize: 11),
+                                                  overflow: TextOverflow.ellipsis,
+                                                  maxLines: 1,
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                        ],
-                                      ),
-                                    ),
-                                    const Expanded(child: SizedBox()),
-                                    Expanded(
-                                      child: Text(
-                                        role,
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: role == 'Тимлид' ? Colors.amber[700] : Colors.grey,
                                         ),
-                                        overflow: TextOverflow.ellipsis,
-                                        maxLines: 1,
-                                      ),
+                                        const Expanded(child: SizedBox()),
+                                        Expanded(
+                                          child: Text(
+                                            role,
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: role == 'Тимлид' ? Colors.amber[700] : Colors.grey,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                            maxLines: 1,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ],
+                                  ),
                                 ),
                               ),
                             ),
@@ -482,34 +501,46 @@ class _ManagerSummaryPageState extends State<ManagerSummaryPage> {
     required Team team,
   }) async {
     final service = ManagementService();
-
-    // Получим список всех команд для перемещения
     final teamsResponse = await service.getTeamMembers();
     final allTeams = teamsResponse.map((t) => t.team).toList();
 
+    const Color brandColor = Color(0xFF722ED1);
+    const Color moveColor = Colors.purple;
+    const Color promoteColor = Colors.blue;
+    const Color demoteColor = Colors.red;
+
     await showModalBottomSheet(
       context: context,
-      useRootNavigator: true,
       isScrollControlled: true,
+      useRootNavigator: true,
+      enableDrag: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       builder: (ctx) {
-        return SingleChildScrollView(
-          child: Container(
+        return ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(ctx).size.height * 0.9,
+          ),
+          child: SingleChildScrollView(
             padding: EdgeInsets.only(
               left: 16,
               right: 16,
-              top: 16,
+              top: 12,
               bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Индикатор закрытия
                 Center(
                   child: Container(
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.grey[400],
+                      color: Theme.of(context).dividerColor,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -518,81 +549,150 @@ class _ManagerSummaryPageState extends State<ManagerSummaryPage> {
 
                 Text(
                   'Действия с ${employee.fullname}',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 16),
 
-                // Сделать тимлидом / снять
-                if (employee.teams.any((t) => t.id == team.id))
+                // === Назначить / Снять тимлида ===
+                if (employee.teams.any((t) => t.id == team.id)) ...[
                   Material(
-                    child: ListTile(
-                      title: Text(
-                        employee.teams
-                            .firstWhere((t) => t.id == team.id)
-                            .isTeamlead
-                            ? 'Снять с должности тимлида'
-                            : 'Назначить тимлидом',
+                    type: MaterialType.transparency,
+                    child: Ink(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
                       ),
-                      leading: Icon(
-                        employee.teams
-                            .firstWhere((t) => t.id == team.id)
-                            .isTeamlead
-                            ? Icons.arrow_downward
-                            : Icons.leaderboard_outlined,
-                        color: employee.teams
-                            .firstWhere((t) => t.id == team.id)
-                            .isTeamlead
-                            ? Colors.red
-                            : Colors.blue,
-                      ),
-                      onTap: () async {
-                        final isTeamlead = employee.teams
-                            .firstWhere((t) => t.id == team.id)
-                            .isTeamlead;
-                        try {
-                          if (isTeamlead) {
-                            await service.revokeTeamLead(team.id, employee.id);
-                          } else {
-                            await service.assignTeamLead(team.id, employee.id);
+                      child: InkWell(
+                        onTap: () async {
+                          final isTeamlead = employee.teams
+                              .firstWhere((t) => t.id == team.id)
+                              .isTeamlead;
+                          try {
+                            if (isTeamlead) {
+                              await service.revokeTeamLead(team.id, employee.id);
+                            } else {
+                              await service.assignTeamLead(team.id, employee.id);
+                            }
+                            if (Navigator.canPop(ctx)) Navigator.of(ctx).pop();
+                            _load();
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Ошибка: $e')),
+                              );
+                            }
                           }
-                          Navigator.of(ctx).pop();
-                          _load(); // обновить данные
-                        } catch (e) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Ошибка: $e')),
-                          );
-                        }
-                      },
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        hoverColor: (employee.teams
+                            .firstWhere((t) => t.id == team.id)
+                            .isTeamlead
+                            ? demoteColor
+                            : promoteColor)
+                            .withOpacity(0.08),
+                        splashColor: (employee.teams
+                            .firstWhere((t) => t.id == team.id)
+                            .isTeamlead
+                            ? demoteColor
+                            : promoteColor)
+                            .withOpacity(0.15),
+                        highlightColor: Colors.transparent,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                          child: Row(
+                            children: [
+                              Icon(
+                                employee.teams
+                                    .firstWhere((t) => t.id == team.id)
+                                    .isTeamlead
+                                    ? Icons.arrow_downward
+                                    : Icons.leaderboard_outlined,
+                                color: employee.teams
+                                    .firstWhere((t) => t.id == team.id)
+                                    .isTeamlead
+                                    ? demoteColor
+                                    : promoteColor,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                employee.teams
+                                    .firstWhere((t) => t.id == team.id)
+                                    .isTeamlead
+                                    ? 'Снять с должности тимлида'
+                                    : 'Назначить тимлидом',
+                                style: const TextStyle(fontSize: 15, color: Colors.black87),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
                   ),
+                  const SizedBox(height: 8),
+                ],
 
-                const Divider(),
-
-                // Переместить в другую команду
+                // === Переместить в другую команду ===
                 Material(
-                  child: ListTile(
-                    title: const Text('Переместить в другую команду'),
-                    leading: const Icon(Icons.swap_horiz, color: Colors.purple),
-                    onTap: () async {
-                      Navigator.of(ctx).pop();
-                      await _showMoveToTeamSheet(
-                        context: context,
-                        employee: employee,
-                        currentTeamId: team.id,
-                        allTeams: allTeams,
-                      );
-                    },
+                  type: MaterialType.transparency,
+                  child: Ink(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.1),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    child: InkWell(
+                      onTap: () async {
+                        Navigator.of(ctx).pop();
+                        await _showMoveToTeamSheet(
+                          context: context,
+                          employee: employee,
+                          currentTeamId: team.id,
+                          allTeams: allTeams,
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      hoverColor: moveColor.withOpacity(0.08),
+                      splashColor: moveColor.withOpacity(0.15),
+                      highlightColor: Colors.transparent,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        child: Row(
+                          children: [
+                            Icon(Icons.swap_horiz, color: moveColor, size: 20),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Переместить в другую команду',
+                              style: const TextStyle(fontSize: 15, color: Colors.black87),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 ),
+                const SizedBox(height: 8),
 
-                const Divider(),
-
-                // Удалить из команды
-                Material(
-                  child: ListTile(
-                    title: const Text('Удалить из команды'),
-                    leading: const Icon(Icons.remove_circle, color: Colors.orange),
-                    onTap: () async {
+                // === Удалить из команды — КРАСНАЯ КНОПКА (как в эталоне) ===
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () async {
                       final confirm = await _showConfirmationDialog(
                         context,
                         'Удалить из команды',
@@ -601,15 +701,26 @@ class _ManagerSummaryPageState extends State<ManagerSummaryPage> {
                       if (confirm == true) {
                         try {
                           await service.removeMemberFromTeam(team.id, employee.id);
-                          Navigator.of(ctx).pop();
+                          if (Navigator.canPop(ctx)) Navigator.of(ctx).pop();
                           _load();
                         } catch (e) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Ошибка: $e')),
-                          );
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Ошибка: $e')),
+                            );
+                          }
                         }
                       }
                     },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: const Text('Удалить из команды'),
                   ),
                 ),
 
@@ -678,104 +789,348 @@ class _ManagerSummaryPageState extends State<ManagerSummaryPage> {
     final teamsResponse = await service.getTeamMembers();
     final allTeams = teamsResponse.map((t) => t.team).toList();
 
+    const Color brandColor = Color(0xFF722ED1);
+
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (ctx) => Container(
-        padding: EdgeInsets.only(
-          left: 16,
-          right: 16,
-          top: 16,
-          bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[400],
-                  borderRadius: BorderRadius.circular(2),
+      useRootNavigator: true,
+      enableDrag: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      builder: (ctx) {
+        return ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(ctx).size.height * 0.9,
+          ),
+          child: SingleChildScrollView(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 12,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).dividerColor,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Назначить ${employee.fullname}',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-            // Назначить в команду как участник или тимлид
-            ...allTeams.map((team) {
-              return Column(
-                children: [
-                  ListTile(
-                    title: Text('В команду "${team.name}" как участник'),
-                    onTap: () async {
-                      try {
-                        await service.addMembersToTeam(team.id, [employee.id]);
-                        Navigator.of(ctx).pop();
-                        _load();
-                      } catch (e) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Ошибка: $e')),
-                        );
-                      }
-                    },
+                Text(
+                  'Назначить участника "${employee.fullname}" в команду:',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
                   ),
-                  ListTile(
-                    title: Text('Сделать тимлидом в "${team.name}"'),
-                    onTap: () async {
-                      try {
-                        await service.addMembersToTeam(team.id, [employee.id]);
-                        await Future.delayed(const Duration(milliseconds: 300)); // дать время добавиться
-                        await service.assignTeamLead(team.id, employee.id);
-                        Navigator.of(ctx).pop();
-                        _load();
-                      } catch (e) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Ошибка: $e')),
-                        );
-                      }
-                    },
+                ),
+                const SizedBox(height: 10),
+
+                // ✅ Кнопки: как во втором варианте, но с правильным ховером
+                for (final team in allTeams) ...[
+                  Material(
+                    type: MaterialType.transparency,
+                    child: Ink(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      child: InkWell(
+                        onTap: () async {
+                          Navigator.of(ctx).pop();
+                          await _showRoleSelectionSheet(context, employee, team);
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        hoverColor: brandColor.withOpacity(0.08),   // ← фиолетовый ховер
+                        splashColor: brandColor.withOpacity(0.15),  // ← фиолетовый сплеш
+                        highlightColor: Colors.transparent,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                          child: Row(
+                            children: [
+                              Icon(Icons.group, color: brandColor, size: 20),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  team.name,
+                                  style: const TextStyle(fontSize: 15, color: Colors.black87),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                  const Divider(),
+                  const SizedBox(height: 8), // ← отступ между кнопками
                 ],
-              );
-            }).toList(),
 
-            // Удалить из компании
-            Material(
-              child: ListTile(
-                title: const Text('Удалить из компании', style: TextStyle(color: Colors.red)),
-                leading: const Icon(Icons.delete, color: Colors.red),
-                onTap: () async {
-                  final confirm = await _showConfirmationDialog(
-                    context,
-                    'Удалить из компании',
-                    'Вы уверены, что хотите удалить ${employee.fullname} из компании навсегда?',
-                  );
-                  if (confirm == true) {
-                    try {
-                      // await service.removeMemberFromCompany(employee.id);
-                      Navigator.of(ctx).pop();
-                      _load();
-                    } catch (e) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Ошибка: $e')),
+                const SizedBox(height: 8), // ← отступ между последней командой и кнопкой
+
+                // Кнопка "Удалить из компании"
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      final confirm = await _showConfirmationDialog(
+                        context,
+                        'Удалить из компании',
+                        'Вы уверены, что хотите удалить ${employee.fullname} из компании навсегда?',
                       );
-                    }
-                  }
-                },
-              ),
-            ),
+                      if (confirm == true) {
+                        try {
+                          await service.removeMemberFromCompany(employee.id);
+                          if (Navigator.canPop(ctx)) Navigator.of(ctx).pop();
+                          _load();
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Ошибка: $e')),
+                            );
+                          }
+                        }
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: const Text('Удалить из компании'),
+                  ),
+                ),
 
-            const SizedBox(height: 16),
-          ],
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showRoleSelectionSheet(
+      BuildContext context,
+      Employee employee,
+      Team team,
+      ) async {
+    const Color brandColor = Color(0xFF722ED1);
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useRootNavigator: true,
+      enableDrag: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      builder: (ctx) {
+        return ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(ctx).size.height * 0.9,
+          ),
+          child: SingleChildScrollView(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 12,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).dividerColor,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                Text(
+                  'Роль в команде "${team.name}"',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // === Кнопка: Назначить участником ===
+                Material(
+                  type: MaterialType.transparency,
+                  child: Ink(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.1),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    child: InkWell(
+                      onTap: () async {
+                        try {
+                          await ManagementService().addMembersToTeam(team.id, [employee.id]);
+                          if (Navigator.canPop(ctx)) Navigator.of(ctx).pop();
+                          _load();
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Ошибка: $e')),
+                            );
+                          }
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      hoverColor: Colors.grey[700]!.withOpacity(0.08), // серовато-фиолетовый ховер, как в оригинале
+                      splashColor: Colors.grey[700]!.withOpacity(0.15),
+                      highlightColor: Colors.transparent,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        child: Row(
+                          children: [
+                            Icon(Icons.person, color: Colors.grey[700], size: 20),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Назначить участником',
+                              style: const TextStyle(fontSize: 15, color: Colors.black87),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                // === Кнопка: Назначить тимлидом ===
+                Material(
+                  type: MaterialType.transparency,
+                  child: Ink(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.1),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    child: InkWell(
+                      onTap: () async {
+                        try {
+                          await ManagementService().addMembersToTeam(team.id, [employee.id]);
+                          await Future.delayed(const Duration(milliseconds: 300));
+                          await ManagementService().assignTeamLead(team.id, employee.id);
+                          if (Navigator.canPop(ctx)) Navigator.of(ctx).pop();
+                          _load();
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Ошибка: $e')),
+                            );
+                          }
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      hoverColor: brandColor.withOpacity(0.08),
+                      splashColor: brandColor.withOpacity(0.15),
+                      highlightColor: Colors.transparent,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        child: Row(
+                          children: [
+                            Icon(Icons.leaderboard_outlined, color: brandColor, size: 20),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Назначить тимлидом',
+                              style: const TextStyle(fontSize: 15, color: Colors.black87),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+// Вспомогательный метод для кнопок ролей (всё ещё внутри одного класса)
+  Widget _buildRoleButton(
+      BuildContext ctx,
+      IconData icon,
+      String label,
+      Color iconColor,
+      VoidCallback onPressed,
+      ) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(12),
+        hoverColor: iconColor.withOpacity(0.08),
+        splashColor: iconColor.withOpacity(0.2),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.1),
+                blurRadius: 4,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: iconColor),
+              const SizedBox(width: 12),
+              Text(
+                label,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -787,85 +1142,245 @@ class _ManagerSummaryPageState extends State<ManagerSummaryPage> {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-          left: 16,
-          right: 16,
-          top: 16,
-          bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Создать новую команду', style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              decoration: const InputDecoration(
-                hintText: 'Название команды',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () async {
-                if (controller.text.trim().isNotEmpty) {
-                  try {
-                    await ManagementService().createTeam(controller.text.trim());
-                    Navigator.of(ctx).pop();
-                    _load();
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Ошибка: $e')),
-                    );
-                  }
-                }
-              },
-              child: const Text('Создать'),
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-    );
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 12,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Дрэг-хендл (индикатор)
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).dividerColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Заголовок
+              Text(
+                'Создать новую команду',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Поле ввода
+              TextField(
+                controller: controller,
+                autofocus: true,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (value) {
+                  if (value.trim().isNotEmpty) {
+                    _createTeamAndClose(ctx, controller.text.trim(), context);
+                  }
+                },
+                decoration: InputDecoration(
+                  hintText: 'Название команды',
+                  filled: true,
+                  fillColor: Theme.of(context).colorScheme.surfaceVariant,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  prefixIcon: const Icon(Icons.group, color: Colors.grey),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Кнопка создания
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    if (controller.text.trim().isNotEmpty) {
+                      _createTeamAndClose(ctx, controller.text.trim(), context);
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF722ED1),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    elevation: 2,
+                    shadowColor: const Color(0xFF722ED1).withOpacity(0.3),
+                    textStyle: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  child: const Text('Создать команду'),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    ).then((_) => controller.dispose()); // Автоматически освобождаем контроллер
+  }
+
+  Future<void> _createTeamAndClose(
+      BuildContext sheetContext,
+      String teamName,
+      BuildContext originalContext,
+      ) async {
+    try {
+      await ManagementService().createTeam(teamName);
+      if (Navigator.canPop(sheetContext)) {
+        Navigator.of(sheetContext).pop();
+      }
+      _load();
+    } catch (e) {
+      if (originalContext.mounted) {
+        ScaffoldMessenger.of(originalContext).showSnackBar(
+          SnackBar(
+            content: Text('Не удалось создать команду: ${e.toString()}'),
+            backgroundColor: Theme.of(originalContext).colorScheme.error,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _showTeamActionsBottomSheet(BuildContext context, TeamWithEmployees team) async {
+    const Color brandRed = Colors.red;
+    const Color brandColor = Color(0xFF722ED1); // на случай, если захотите использовать фиолетовый для других действий
+
     await showModalBottomSheet(
       context: context,
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Действия с командой', style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            ListTile(
-              title: const Text('Удалить команду', style: TextStyle(color: Colors.red)),
-              leading: const Icon(Icons.delete, color: Colors.red),
-              onTap: () async {
-                final confirm = await _showConfirmationDialog(
-                  context,
-                  'Удалить команду',
-                  'Вы уверены, что хотите удалить команду "${team.team.name}"?\nВсе участники будут перемещены в "Без команды".',
-                );
-                if (confirm == true) {
-                  try {
-                    await ManagementService().deleteTeam(team.team.id);
-                    Navigator.of(ctx).pop();
-                    _load();
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Ошибка: $e')),
-                    );
-                  }
-                }
-              },
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
+      isScrollControlled: true,
+      useRootNavigator: true,
+      enableDrag: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      builder: (ctx) {
+        return ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(ctx).size.height * 0.9,
+          ),
+          child: SingleChildScrollView(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 12,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Индикатор закрытия
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).dividerColor,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                Text(
+                  'Действия с командой',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // === Кнопка: Удалить команду ===
+                Material(
+                  type: MaterialType.transparency,
+                  child: Ink(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.1),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    child: InkWell(
+                      onTap: () async {
+                        final confirm = await _showConfirmationDialog(
+                          context,
+                          'Удалить команду',
+                          'Вы уверены, что хотите удалить команду "${team.team.name}"?\nВсе участники будут перемещены в "Без команды".',
+                        );
+                        if (confirm == true) {
+                          try {
+                            await ManagementService().deleteTeam(team.team.id);
+                            if (Navigator.canPop(ctx)) Navigator.of(ctx).pop();
+                            _load();
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Ошибка: $e')),
+                              );
+                            }
+                          }
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      hoverColor: brandRed.withOpacity(0.08),   // ← красный ховер (не серый!)
+                      splashColor: brandRed.withOpacity(0.15),  // ← красный сплеш
+                      highlightColor: Colors.transparent,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete, color: brandRed, size: 20),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Удалить команду',
+                              style: const TextStyle(
+                                fontSize: 15,
+                                color: Colors.black87,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
