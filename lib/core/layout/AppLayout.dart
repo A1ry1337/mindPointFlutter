@@ -499,68 +499,69 @@ class _AppLayoutState extends State<AppLayout> {
     return Scaffold(
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(47),
-        child: Column(
-          children: [
-            Container(
-              height: 37,
-              color: Colors.white,
-              child: Row(
-                children: [
-                  if (widget.showBackButton)
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back),
-                      onPressed: () => context.pop(),
-                    ),
-                  const Spacer(),
-                  Padding(
-                    padding: const EdgeInsets.only(right: 16),
-                    child: MouseRegion(
-                      onEnter: (_) => setState(() => isHovering = true),
-                      onExit: (_) => setState(() => isHovering = false),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(18),
-                        onTap: () => _openProfileSheet(context),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 150),
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: isHovering
-                                ? Colors.grey.shade100
-                                : Colors.white,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: isHovering
-                                  ? Colors.blue.shade300
-                                  : Colors.grey.shade300,
+        child: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              Container(
+                height: 37,
+                color: Colors.white,
+                child: Row(
+                  children: [
+                    if (widget.showBackButton)
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back),
+                        onPressed: () => context.pop(),
+                      ),
+                    const Spacer(),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 16),
+                      child: MouseRegion(
+                        onEnter: (_) => setState(() => isHovering = true),
+                        onExit: (_) => setState(() => isHovering = false),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(18),
+                          onTap: () => _openProfileSheet(context),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: isHovering ? Colors.grey.shade100 : Colors.white,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isHovering
+                                    ? Colors.blue.shade300
+                                    : Colors.grey.shade300,
+                              ),
                             ),
-                          ),
-                          child: const Icon(
-                            Icons.person_outline,
-                            size: 20,
-                            color: Colors.grey,
+                            child: const Icon(
+                              Icons.person_outline,
+                              size: 20,
+                              color: Colors.grey,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              height: 10,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.white,
-                    Color(0xFFDDEDFD),
                   ],
                 ),
               ),
-            ),
-          ],
+              Container(
+                height: 10,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.white,
+                      Color(0xFFDDEDFD),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
       body: widget.child,

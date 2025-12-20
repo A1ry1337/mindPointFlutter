@@ -140,7 +140,7 @@ class _RegisterPageState extends State<RegisterPage>
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
-            vertical: 14,
+            vertical: 10,
           ),
           suffixIcon: showVisibilityIcon
               ? IconButton(

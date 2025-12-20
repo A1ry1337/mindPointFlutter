@@ -156,7 +156,7 @@ class _LoginPageState extends State<LoginPage> {
                             border: InputBorder.none,
                             contentPadding: const EdgeInsets.symmetric(
                               horizontal: 16,
-                              vertical: 14,
+                              vertical: 10,
                             ),
                           ),
                           style: const TextStyle(fontSize: 16),
@@ -188,7 +188,7 @@ class _LoginPageState extends State<LoginPage> {
                             border: InputBorder.none,
                             contentPadding: const EdgeInsets.symmetric(
                               horizontal: 16,
-                              vertical: 14,
+                              vertical: 10,
                             ),
                             suffixIcon: IconButton(
                               icon: Icon(
