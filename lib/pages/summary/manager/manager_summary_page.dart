@@ -21,6 +21,8 @@ class _ManagerSummaryPageState extends State<ManagerSummaryPage> {
   List<Employee> _employeesWithoutTeam = [];
   final Map<String, bool> _expanded = {};
   bool _loading = true;
+  List<UserJoinRequest> _pendingJoinRequests = [];
+  bool _loadingJoinRequests = true;
 
   @override
   void initState() {
@@ -30,10 +32,8 @@ class _ManagerSummaryPageState extends State<ManagerSummaryPage> {
 
   Future<void> _load() async {
     final data = await _service.getEmployeesGroupedByTeam();
-
     final List<TeamWithEmployees> filtered = [];
     final List<Employee> employeesWithoutTeam = [];
-
     for (var teamData in data) {
       if (teamData.team.name.toLowerCase() == 'без команды') {
         employeesWithoutTeam.addAll(teamData.employees);
@@ -41,7 +41,6 @@ class _ManagerSummaryPageState extends State<ManagerSummaryPage> {
         filtered.add(teamData);
       }
     }
-
     setState(() {
       _teams = filtered;
       _employeesWithoutTeam = employeesWithoutTeam;
@@ -52,6 +51,21 @@ class _ManagerSummaryPageState extends State<ManagerSummaryPage> {
         );
       _loading = false;
     });
+
+    // === ЗАГРУЗКА ЗАПРОСОВ ОТДЕЛЬНО ===
+    try {
+      final requests = await _service.getManagerRequests();
+      if (mounted) {
+        setState(() {
+          _pendingJoinRequests = requests;
+          _loadingJoinRequests = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() { _loadingJoinRequests = false; });
+      }
+    }
   }
 
   void _toggle(String id) {
@@ -118,6 +132,10 @@ class _ManagerSummaryPageState extends State<ManagerSummaryPage> {
 
                   /// 📋 ТАБЛИЦА СОТРУДНИКОВ БЕЗ КОМАНДЫ
                   if (_employeesWithoutTeam.isNotEmpty) _buildNoTeamTable(),
+                  const SizedBox(height: 24),
+                  /// 📋 ЗАПРОСЫ НА ДОБАВЛЕНИЕ В КОМПАНИЮ
+                  if (_pendingJoinRequests.isNotEmpty || _loadingJoinRequests)
+                    _buildJoinRequestsTable(),
                 ],
               ),
             ),
@@ -151,9 +169,15 @@ class _ManagerSummaryPageState extends State<ManagerSummaryPage> {
                   style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
                 ),
                 const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.add, color: Colors.white),
-                  onPressed: () => _showCreateTeamBottomSheet(context),
+                InkWell(
+                  onTap: () => _showCreateTeamBottomSheet(context),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    width: 24,
+                    height: 24,
+                    alignment: Alignment.center,
+                    child: Icon(Icons.add, color: Colors.white, size: 16),
+                  ),
                 ),
               ],
             ),
@@ -1481,6 +1505,230 @@ class _ManagerSummaryPageState extends State<ManagerSummaryPage> {
               const SizedBox(height: 12),
 
               // Кнопка отмены
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Отмена'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // === НОВАЯ ТАБЛИЦА: ЗАПРОСЫ НА ДОБАВЛЕНИЕ ===
+  Widget _buildJoinRequestsTable() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          /// 🔵 ЗАГОЛОВОК
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: const BoxDecoration(
+              color: Color(0xFF793CAE),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+            child: const Text(
+              'Запросы на добавление в компанию',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+
+          /// 🟢 ХЕДЕР
+          Container(
+            height: _rowHeight,
+            padding: const EdgeInsets.symmetric(horizontal: _hPadding),
+            color: Colors.teal[50],
+            child: const Row(
+              children: [
+                Expanded(
+                  child: Text('Дата', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Text('ФИО', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+
+          /// 📄 СПИСОК ЗАПРОСОВ
+          if (_loadingJoinRequests)
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: _pendingJoinRequests.asMap().entries.map((entry) {
+                final index = entry.key;
+                final req = entry.value;
+                final isLast = index == _pendingJoinRequests.length - 1;
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Material(
+                      borderRadius: isLast
+                          ? const BorderRadius.only(
+                        bottomLeft: Radius.circular(12),
+                        bottomRight: Radius.circular(12),
+                      )
+                          : BorderRadius.zero,
+                      child: InkWell(
+                        onTap: () => _showJoinRequestActionsBottomSheet(context, req),
+                        borderRadius: isLast
+                            ? const BorderRadius.only(
+                          bottomLeft: Radius.circular(12),
+                          bottomRight: Radius.circular(12),
+                        )
+                            : BorderRadius.zero,
+                        child: Container(
+                          height: _rowHeight,
+                          padding: const EdgeInsets.symmetric(horizontal: _hPadding),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  req.createdAt.toLocal().toString().substring(0, 16),
+                                  style: const TextStyle(fontSize: 11),
+                                ),
+                              ),
+                              Expanded(
+                                flex: 2,
+                                child: Text(
+                                  req.fullName,
+                                  style: const TextStyle(fontSize: 11),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (!isLast) const Divider(height: 1),
+                  ],
+                );
+              }).toList(),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _showJoinRequestActionsBottomSheet(BuildContext context, UserJoinRequest request) {
+    showModalBottomSheet(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return Container(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 12,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).dividerColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Запрос от ${request.fullName}',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Дата: ${request.createdAt.toLocal().toString().substring(0, 16)}',
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+              const SizedBox(height: 24),
+
+              // Кнопка "Принять"
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF722ED1),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  onPressed: () async {
+                    Navigator.of(ctx).pop();
+                    try {
+                      await _service.respondToManagerRequest(request.requestId, true);
+                      _load();
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Ошибка при принятии: $e')),
+                        );
+                      }
+                    }
+                  },
+                  child: const Text('Принять'),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Кнопка "Отклонить"
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.red),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  onPressed: () async {
+                    Navigator.of(ctx).pop();
+                    try {
+                      await _service.respondToManagerRequest(request.requestId, false);
+                      _load();
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Ошибка при отклонении: $e')),
+                        );
+                      }
+                    }
+                  },
+                  child: const Text('Отклонить', style: TextStyle(color: Colors.red)),
+                ),
+              ),
+              const SizedBox(height: 12),
+
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(),
                 child: const Text('Отмена'),

@@ -76,3 +76,29 @@ class TeamMembersResponse {
     );
   }
 }
+
+class UserJoinRequest {
+  final String requestId;
+  final String userId;
+  final String fullName;
+  final String username;
+  final DateTime createdAt;
+
+  UserJoinRequest({
+    required this.requestId,
+    required this.userId,
+    required this.fullName,
+    required this.username,
+    required this.createdAt,
+  });
+
+  factory UserJoinRequest.fromJson(Map<String, dynamic> json) {
+    return UserJoinRequest(
+      requestId: json['request_id'].toString(),
+      userId: json['user_id'].toString(),
+      fullName: json['full_name'] ?? json['username'] ?? 'Неизвестно',
+      username: json['username'] ?? '',
+      createdAt: DateTime.parse(json['created_at']),
+    );
+  }
+}

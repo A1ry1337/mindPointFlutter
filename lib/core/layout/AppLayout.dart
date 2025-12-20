@@ -402,6 +402,8 @@ class _AppLayoutState extends State<AppLayout> {
 
   void _showSendRequestSheet(BuildContext context) {
     final controller = TextEditingController();
+    final requestsService = RequestsService();
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -419,7 +421,6 @@ class _AppLayoutState extends State<AppLayout> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Handle
               Container(
                 width: 40,
                 height: 4,
@@ -461,9 +462,13 @@ class _AppLayoutState extends State<AppLayout> {
                     final text = controller.text.trim();
                     if (text.isEmpty) return;
                     try {
-                      await RequestsService().sendManagerRequest(text);
+                      await requestsService.sendManagerRequest(text);
+                      Navigator.of(ctx).pop(); // Закрываем лист отправки
+                      // Закрываем текущий лист профиля (если открыт)
+                      Navigator.of(context).pop();
+                      // Открываем заново — с обновлёнными данными
+                      _openProfileSheet(context);
                       if (context.mounted) {
-                        Navigator.of(ctx).pop();
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Заявка отправлена!')),
                         );

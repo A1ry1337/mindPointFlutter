@@ -161,4 +161,28 @@ class ManagementService {
       authRequired: true,
     );
   }
+
+  Future<List<UserJoinRequest>> getManagerRequests() async {
+    final response = await _apiService.get(
+      '/management/manager_requests',
+      authRequired: true,
+    );
+    if (response is List) {
+      return response
+          .map((item) => UserJoinRequest.fromJson(item as Map<String, dynamic>))
+          .toList();
+    }
+    throw Exception('Invalid manager requests response');
+  }
+
+  Future<void> respondToManagerRequest(String requestId, bool approve) async {
+    await _apiService.post(
+      '/management/respond_manager_request',
+      {
+        'request_id': requestId,
+        'approve': approve,
+      },
+      authRequired: true,
+    );
+  }
 }
