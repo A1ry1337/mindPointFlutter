@@ -457,36 +457,22 @@ class _ManagerSummaryPageState extends State<ManagerSummaryPage> {
                         ),
 
                         /// КНОПКИ ДЕЙСТВИЙ
-                        Expanded(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              /// КНОПКА РЕДАКТИРОВАНИЯ (карандашик)
-                              IconButton(
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                                icon: const Icon(
-                                  Icons.edit,
-                                  color: Colors.blue,
-                                  size: 20,
-                                ),
-                                onPressed: () => _onEditEmployee(employee),
-                              ),
-                              const SizedBox(width: 16),
-
-                              /// КНОПКА УДАЛЕНИЯ (крестик)
-                              IconButton(
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                                icon: const Icon(
-                                  Icons.close,
-                                  color: Colors.red,
-                                  size: 20,
-                                ),
-                                onPressed: () => _showDeleteConfirmationBottomSheet(context, employee),
-                              ),
-                            ],
-                          ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min, // ← ключевое: не растягивать
+                          children: [
+                            IconButton(
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              icon: const Icon(Icons.edit, color: Colors.blue, size: 20),
+                              onPressed: () => _onEditEmployee(employee),
+                            ),
+                            IconButton(
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              icon: const Icon(Icons.close, color: Colors.red, size: 20),
+                              onPressed: () => _showDeleteConfirmationBottomSheet(context, employee),
+                            ),
+                          ],
                         ),
                       ],
                     ),
