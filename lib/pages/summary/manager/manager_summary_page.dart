@@ -495,6 +495,9 @@ class _ManagerSummaryPageState extends State<ManagerSummaryPage> {
     required Employee employee,
     required Team team,
   }) async {
+    // Скрываем клавиатуру перед открытием
+    FocusScope.of(context).unfocus();
+
     final service = ManagementService();
     final teamsResponse = await service.getTeamMembers();
     final allTeams = teamsResponse.map((t) => t.team).toList();
@@ -514,44 +517,137 @@ class _ManagerSummaryPageState extends State<ManagerSummaryPage> {
       ),
       backgroundColor: Theme.of(context).colorScheme.surface,
       builder: (ctx) {
-        return ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(ctx).size.height * 0.9,
-          ),
-          child: SingleChildScrollView(
-            padding: EdgeInsets.only(
-              left: 16,
-              right: 16,
-              top: 12,
-              bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {
+            FocusScope.of(ctx).unfocus();
+          },
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(ctx).size.height * 0.9,
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Индикатор закрытия
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).dividerColor,
-                      borderRadius: BorderRadius.circular(2),
+            child: SingleChildScrollView(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 12,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Индикатор закрытия
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Theme.of(ctx).dividerColor,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 16),
+                  const SizedBox(height: 16),
 
-                Text(
-                  'Действия с ${employee.fullname}',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
+                  Text(
+                    'Действия с ${employee.fullname}',
+                    style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
+                  const SizedBox(height: 16),
 
-                // === Назначить / Снять тимлида ===
-                if (employee.teams.any((t) => t.id == team.id)) ...[
+                  // === Назначить / Снять тимлида ===
+                  if (employee.teams.any((t) => t.id == team.id)) ...[
+                    Material(
+                      type: MaterialType.transparency,
+                      child: Ink(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withOpacity(0.1),
+                              blurRadius: 4,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: InkWell(
+                          onTap: () async {
+                            // Скрываем клавиатуру перед действием
+                            FocusScope.of(ctx).unfocus();
+
+                            final isTeamlead = employee.teams
+                                .firstWhere((t) => t.id == team.id)
+                                .isTeamlead;
+                            try {
+                              if (isTeamlead) {
+                                await service.revokeTeamLead(team.id, employee.id);
+                              } else {
+                                await service.assignTeamLead(team.id, employee.id);
+                              }
+                              if (Navigator.canPop(ctx)) Navigator.of(ctx).pop();
+                              _load();
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Ошибка: $e')),
+                                );
+                              }
+                            }
+                          },
+                          borderRadius: BorderRadius.circular(12),
+                          hoverColor: (employee.teams
+                              .firstWhere((t) => t.id == team.id)
+                              .isTeamlead
+                              ? demoteColor
+                              : promoteColor)
+                              .withOpacity(0.08),
+                          splashColor: (employee.teams
+                              .firstWhere((t) => t.id == team.id)
+                              .isTeamlead
+                              ? demoteColor
+                              : promoteColor)
+                              .withOpacity(0.15),
+                          highlightColor: Colors.transparent,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  employee.teams
+                                      .firstWhere((t) => t.id == team.id)
+                                      .isTeamlead
+                                      ? Icons.arrow_downward
+                                      : Icons.leaderboard_outlined,
+                                  color: employee.teams
+                                      .firstWhere((t) => t.id == team.id)
+                                      .isTeamlead
+                                      ? demoteColor
+                                      : promoteColor,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  employee.teams
+                                      .firstWhere((t) => t.id == team.id)
+                                      .isTeamlead
+                                      ? 'Снять с должности тимлида'
+                                      : 'Назначить тимлидом',
+                                  style: const TextStyle(fontSize: 15, color: Colors.black87),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+
+                  // === Переместить в другую команду ===
                   Material(
                     type: MaterialType.transparency,
                     child: Ink(
@@ -568,63 +664,29 @@ class _ManagerSummaryPageState extends State<ManagerSummaryPage> {
                       ),
                       child: InkWell(
                         onTap: () async {
-                          final isTeamlead = employee.teams
-                              .firstWhere((t) => t.id == team.id)
-                              .isTeamlead;
-                          try {
-                            if (isTeamlead) {
-                              await service.revokeTeamLead(team.id, employee.id);
-                            } else {
-                              await service.assignTeamLead(team.id, employee.id);
-                            }
-                            if (Navigator.canPop(ctx)) Navigator.of(ctx).pop();
-                            _load();
-                          } catch (e) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Ошибка: $e')),
-                              );
-                            }
-                          }
+                          // Скрываем клавиатуру перед действием
+                          FocusScope.of(ctx).unfocus();
+
+                          Navigator.of(ctx).pop();
+                          await _showMoveToTeamSheet(
+                            context: context,
+                            employee: employee,
+                            currentTeamId: team.id,
+                            allTeams: allTeams,
+                          );
                         },
                         borderRadius: BorderRadius.circular(12),
-                        hoverColor: (employee.teams
-                            .firstWhere((t) => t.id == team.id)
-                            .isTeamlead
-                            ? demoteColor
-                            : promoteColor)
-                            .withOpacity(0.08),
-                        splashColor: (employee.teams
-                            .firstWhere((t) => t.id == team.id)
-                            .isTeamlead
-                            ? demoteColor
-                            : promoteColor)
-                            .withOpacity(0.15),
+                        hoverColor: moveColor.withOpacity(0.08),
+                        splashColor: moveColor.withOpacity(0.15),
                         highlightColor: Colors.transparent,
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                           child: Row(
                             children: [
-                              Icon(
-                                employee.teams
-                                    .firstWhere((t) => t.id == team.id)
-                                    .isTeamlead
-                                    ? Icons.arrow_downward
-                                    : Icons.leaderboard_outlined,
-                                color: employee.teams
-                                    .firstWhere((t) => t.id == team.id)
-                                    .isTeamlead
-                                    ? demoteColor
-                                    : promoteColor,
-                                size: 20,
-                              ),
+                              Icon(Icons.swap_horiz, color: moveColor, size: 20),
                               const SizedBox(width: 12),
                               Text(
-                                employee.teams
-                                    .firstWhere((t) => t.id == team.id)
-                                    .isTeamlead
-                                    ? 'Снять с должности тимлида'
-                                    : 'Назначить тимлидом',
+                                'Переместить в другую команду',
                                 style: const TextStyle(fontSize: 15, color: Colors.black87),
                               ),
                             ],
@@ -634,98 +696,57 @@ class _ManagerSummaryPageState extends State<ManagerSummaryPage> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                ],
 
-                // === Переместить в другую команду ===
-                Material(
-                  type: MaterialType.transparency,
-                  child: Ink(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.1),
-                          blurRadius: 4,
-                          offset: const Offset(0, 1),
-                        ),
-                      ],
-                    ),
-                    child: InkWell(
-                      onTap: () async {
-                        Navigator.of(ctx).pop();
-                        await _showMoveToTeamSheet(
-                          context: context,
-                          employee: employee,
-                          currentTeamId: team.id,
-                          allTeams: allTeams,
+                  // === Удалить из команды — КРАСНАЯ КНОПКА (как в эталоне) ===
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        // Скрываем клавиатуру перед действием
+                        FocusScope.of(ctx).unfocus();
+
+                        final confirm = await _showConfirmationDialog(
+                          context,
+                          'Удалить из команды',
+                          'Вы уверены, что хотите удалить ${employee.fullname} из команды "${team.name}"?',
                         );
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      hoverColor: moveColor.withOpacity(0.08),
-                      splashColor: moveColor.withOpacity(0.15),
-                      highlightColor: Colors.transparent,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                        child: Row(
-                          children: [
-                            Icon(Icons.swap_horiz, color: moveColor, size: 20),
-                            const SizedBox(width: 12),
-                            Text(
-                              'Переместить в другую команду',
-                              style: const TextStyle(fontSize: 15, color: Colors.black87),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-
-                // === Удалить из команды — КРАСНАЯ КНОПКА (как в эталоне) ===
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      final confirm = await _showConfirmationDialog(
-                        context,
-                        'Удалить из команды',
-                        'Вы уверены, что хотите удалить ${employee.fullname} из команды "${team.name}"?',
-                      );
-                      if (confirm == true) {
-                        try {
-                          await service.removeMemberFromTeam(team.id, employee.id);
-                          if (Navigator.canPop(ctx)) Navigator.of(ctx).pop();
-                          _load();
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Ошибка: $e')),
-                            );
+                        if (confirm == true) {
+                          try {
+                            await service.removeMemberFromTeam(team.id, employee.id);
+                            if (Navigator.canPop(ctx)) Navigator.of(ctx).pop();
+                            _load();
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Ошибка: $e')),
+                              );
+                            }
                           }
                         }
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      child: const Text('Удалить из команды'),
                     ),
-                    child: const Text('Удалить из команды'),
                   ),
-                ),
 
-                const SizedBox(height: 16),
-              ],
+                  const SizedBox(height: 16),
+                ],
+              ),
             ),
           ),
         );
       },
-    );
+    ).then((_) {
+      // При закрытии bottom sheet тоже скрываем клавиатуру
+      FocusScope.of(context).unfocus();
+    });
   }
 
   Future<void> _showMoveToTeamSheet({
@@ -734,52 +755,71 @@ class _ManagerSummaryPageState extends State<ManagerSummaryPage> {
     required String currentTeamId,
     required List<Team> allTeams,
   }) async {
+    // Скрываем клавиатуру перед открытием
+    FocusScope.of(context).unfocus();
+
     final filteredTeams = allTeams.where((t) => t.id != currentTeamId).toList();
 
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (ctx) => Container(
-        padding: EdgeInsets.only(
-          left: 16,
-          right: 16,
-          top: 16,
-          bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Выберите команду', style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            ...filteredTeams.map((team) {
-              return ListTile(
-                title: Text(team.name),
-                onTap: () async {
-                  try {
-                    final service = ManagementService();
-                    await service.moveMemberToAnotherTeam(
-                      userId: employee.id,
-                      fromTeamId: currentTeamId,
-                      toTeamId: team.id,
-                    );
-                    Navigator.of(ctx).pop();
-                    _load();
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Ошибка: $e')),
-                    );
-                  }
-                },
-              );
-            }).toList(),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
+      builder: (ctx) {
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {
+            FocusScope.of(ctx).unfocus();
+          },
+          child: Container(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 16,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Выберите команду', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 16),
+                ...filteredTeams.map((team) {
+                  return ListTile(
+                    title: Text(team.name),
+                    onTap: () async {
+                      // Скрываем клавиатуру перед действием
+                      FocusScope.of(ctx).unfocus();
+
+                      try {
+                        final service = ManagementService();
+                        await service.moveMemberToAnotherTeam(
+                          userId: employee.id,
+                          fromTeamId: currentTeamId,
+                          toTeamId: team.id,
+                        );
+                        Navigator.of(ctx).pop();
+                        _load();
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Ошибка: $e')),
+                        );
+                      }
+                    },
+                  );
+                }).toList(),
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+        );
+      },
+    ).then((_) {
+      FocusScope.of(context).unfocus();
+    });
   }
 
   Future<void> _showNoTeamEmployeeActions(BuildContext context, Employee employee) async {
+    // Скрываем клавиатуру перед открытием
+    FocusScope.of(context).unfocus();
+
     final service = ManagementService();
     final teamsResponse = await service.getTeamMembers();
     final allTeams = teamsResponse.map((t) => t.team).toList();
@@ -796,43 +836,209 @@ class _ManagerSummaryPageState extends State<ManagerSummaryPage> {
       ),
       backgroundColor: Theme.of(context).colorScheme.surface,
       builder: (ctx) {
-        return ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(ctx).size.height * 0.9,
-          ),
-          child: SingleChildScrollView(
-            padding: EdgeInsets.only(
-              left: 16,
-              right: 16,
-              top: 12,
-              bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {
+            FocusScope.of(ctx).unfocus();
+          },
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(ctx).size.height * 0.9,
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).dividerColor,
-                      borderRadius: BorderRadius.circular(2),
+            child: SingleChildScrollView(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 12,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Theme.of(ctx).dividerColor,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 16),
+                  const SizedBox(height: 16),
 
-                Text(
-                  'Назначить участника "${employee.fullname}" в команду:',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
+                  Text(
+                    'Назначить участника "${employee.fullname}" в команду:',
+                    style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 10),
+                  const SizedBox(height: 10),
 
-                // ✅ Кнопки: как во втором варианте, но с правильным ховером
-                for (final team in allTeams) ...[
+                  // ✅ Кнопки: как во втором варианте, но с правильным ховером
+                  for (final team in allTeams) ...[
+                    Material(
+                      type: MaterialType.transparency,
+                      child: Ink(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withOpacity(0.1),
+                              blurRadius: 4,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: InkWell(
+                          onTap: () async {
+                            // Скрываем клавиатуру перед действием
+                            FocusScope.of(ctx).unfocus();
+
+                            Navigator.of(ctx).pop();
+                            await _showRoleSelectionSheet(context, employee, team);
+                          },
+                          borderRadius: BorderRadius.circular(12),
+                          hoverColor: brandColor.withOpacity(0.08),   // ← фиолетовый ховер
+                          splashColor: brandColor.withOpacity(0.15),  // ← фиолетовый сплеш
+                          highlightColor: Colors.transparent,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                            child: Row(
+                              children: [
+                                Icon(Icons.group, color: brandColor, size: 20),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    team.name,
+                                    style: const TextStyle(fontSize: 15, color: Colors.black87),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8), // ← отступ между кнопками
+                  ],
+
+                  const SizedBox(height: 8), // ← отступ между последней командой и кнопкой
+
+                  // Кнопка "Удалить из компании"
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        // Скрываем клавиатуру перед действием
+                        FocusScope.of(ctx).unfocus();
+
+                        final confirm = await _showConfirmationDialog(
+                          context,
+                          'Удалить из компании',
+                          'Вы уверены, что хотите удалить ${employee.fullname} из компании навсегда?',
+                        );
+                        if (confirm == true) {
+                          try {
+                            await service.removeMemberFromCompany(employee.id);
+                            if (Navigator.canPop(ctx)) Navigator.of(ctx).pop();
+                            _load();
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Ошибка: $e')),
+                              );
+                            }
+                          }
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: const Text('Удалить из компании'),
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    ).then((_) {
+      FocusScope.of(context).unfocus();
+    });
+  }
+
+  Future<void> _showRoleSelectionSheet(
+      BuildContext context,
+      Employee employee,
+      Team team,
+      ) async {
+    // Скрываем клавиатуру перед открытием
+    FocusScope.of(context).unfocus();
+
+    const Color brandColor = Color(0xFF722ED1);
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useRootNavigator: true,
+      enableDrag: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      builder: (ctx) {
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {
+            FocusScope.of(ctx).unfocus();
+          },
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(ctx).size.height * 0.9,
+            ),
+            child: SingleChildScrollView(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 12,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Theme.of(ctx).dividerColor,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  Text(
+                    'Роль в команде "${team.name}"',
+                    style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // === Кнопка: Назначить участником ===
                   Material(
                     type: MaterialType.transparency,
                     child: Ink(
@@ -849,26 +1055,34 @@ class _ManagerSummaryPageState extends State<ManagerSummaryPage> {
                       ),
                       child: InkWell(
                         onTap: () async {
-                          Navigator.of(ctx).pop();
-                          await _showRoleSelectionSheet(context, employee, team);
+                          // Скрываем клавиатуру перед действием
+                          FocusScope.of(ctx).unfocus();
+
+                          try {
+                            await ManagementService().addMembersToTeam(team.id, [employee.id]);
+                            if (Navigator.canPop(ctx)) Navigator.of(ctx).pop();
+                            _load();
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Ошибка: $e')),
+                              );
+                            }
+                          }
                         },
                         borderRadius: BorderRadius.circular(12),
-                        hoverColor: brandColor.withOpacity(0.08),   // ← фиолетовый ховер
-                        splashColor: brandColor.withOpacity(0.15),  // ← фиолетовый сплеш
+                        hoverColor: Colors.grey[700]!.withOpacity(0.08), // серовато-фиолетовый ховер, как в оригинале
+                        splashColor: Colors.grey[700]!.withOpacity(0.15),
                         highlightColor: Colors.transparent,
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                           child: Row(
                             children: [
-                              Icon(Icons.group, color: brandColor, size: 20),
+                              Icon(Icons.person, color: Colors.grey[700], size: 20),
                               const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  team.name,
-                                  style: const TextStyle(fontSize: 15, color: Colors.black87),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                              Text(
+                                'Назначить участником',
+                                style: const TextStyle(fontSize: 15, color: Colors.black87),
                               ),
                             ],
                           ),
@@ -876,219 +1090,76 @@ class _ManagerSummaryPageState extends State<ManagerSummaryPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8), // ← отступ между кнопками
+                  const SizedBox(height: 8),
+
+                  // === Кнопка: Назначить тимлидом ===
+                  Material(
+                    type: MaterialType.transparency,
+                    child: Ink(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      child: InkWell(
+                        onTap: () async {
+                          // Скрываем клавиатуру перед действием
+                          FocusScope.of(ctx).unfocus();
+
+                          try {
+                            await ManagementService().addMembersToTeam(team.id, [employee.id]);
+                            await Future.delayed(const Duration(milliseconds: 300));
+                            await ManagementService().assignTeamLead(team.id, employee.id);
+                            if (Navigator.canPop(ctx)) Navigator.of(ctx).pop();
+                            _load();
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Ошибка: $e')),
+                              );
+                            }
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        hoverColor: brandColor.withOpacity(0.08),
+                        splashColor: brandColor.withOpacity(0.15),
+                        highlightColor: Colors.transparent,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                          child: Row(
+                            children: [
+                              Icon(Icons.leaderboard_outlined, color: brandColor, size: 20),
+                              const SizedBox(width: 12),
+                              Text(
+                                'Назначить тимлидом',
+                                style: const TextStyle(fontSize: 15, color: Colors.black87),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
                 ],
-
-                const SizedBox(height: 8), // ← отступ между последней командой и кнопкой
-
-                // Кнопка "Удалить из компании"
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      final confirm = await _showConfirmationDialog(
-                        context,
-                        'Удалить из компании',
-                        'Вы уверены, что хотите удалить ${employee.fullname} из компании навсегда?',
-                      );
-                      if (confirm == true) {
-                        try {
-                          await service.removeMemberFromCompany(employee.id);
-                          if (Navigator.canPop(ctx)) Navigator.of(ctx).pop();
-                          _load();
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Ошибка: $e')),
-                            );
-                          }
-                        }
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    child: const Text('Удалить из компании'),
-                  ),
-                ),
-
-                const SizedBox(height: 8),
-              ],
+              ),
             ),
           ),
         );
       },
-    );
+    ).then((_) {
+      FocusScope.of(context).unfocus();
+    });
   }
 
-  Future<void> _showRoleSelectionSheet(
-      BuildContext context,
-      Employee employee,
-      Team team,
-      ) async {
-    const Color brandColor = Color(0xFF722ED1);
-
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      useRootNavigator: true,
-      enableDrag: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      builder: (ctx) {
-        return ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(ctx).size.height * 0.9,
-          ),
-          child: SingleChildScrollView(
-            padding: EdgeInsets.only(
-              left: 16,
-              right: 16,
-              top: 12,
-              bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).dividerColor,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                Text(
-                  'Роль в команде "${team.name}"',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // === Кнопка: Назначить участником ===
-                Material(
-                  type: MaterialType.transparency,
-                  child: Ink(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.1),
-                          blurRadius: 4,
-                          offset: const Offset(0, 1),
-                        ),
-                      ],
-                    ),
-                    child: InkWell(
-                      onTap: () async {
-                        try {
-                          await ManagementService().addMembersToTeam(team.id, [employee.id]);
-                          if (Navigator.canPop(ctx)) Navigator.of(ctx).pop();
-                          _load();
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Ошибка: $e')),
-                            );
-                          }
-                        }
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      hoverColor: Colors.grey[700]!.withOpacity(0.08), // серовато-фиолетовый ховер, как в оригинале
-                      splashColor: Colors.grey[700]!.withOpacity(0.15),
-                      highlightColor: Colors.transparent,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                        child: Row(
-                          children: [
-                            Icon(Icons.person, color: Colors.grey[700], size: 20),
-                            const SizedBox(width: 12),
-                            Text(
-                              'Назначить участником',
-                              style: const TextStyle(fontSize: 15, color: Colors.black87),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-
-                // === Кнопка: Назначить тимлидом ===
-                Material(
-                  type: MaterialType.transparency,
-                  child: Ink(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.1),
-                          blurRadius: 4,
-                          offset: const Offset(0, 1),
-                        ),
-                      ],
-                    ),
-                    child: InkWell(
-                      onTap: () async {
-                        try {
-                          await ManagementService().addMembersToTeam(team.id, [employee.id]);
-                          await Future.delayed(const Duration(milliseconds: 300));
-                          await ManagementService().assignTeamLead(team.id, employee.id);
-                          if (Navigator.canPop(ctx)) Navigator.of(ctx).pop();
-                          _load();
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Ошибка: $e')),
-                            );
-                          }
-                        }
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      hoverColor: brandColor.withOpacity(0.08),
-                      splashColor: brandColor.withOpacity(0.15),
-                      highlightColor: Colors.transparent,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                        child: Row(
-                          children: [
-                            Icon(Icons.leaderboard_outlined, color: brandColor, size: 20),
-                            const SizedBox(width: 12),
-                            Text(
-                              'Назначить тимлидом',
-                              style: const TextStyle(fontSize: 15, color: Colors.black87),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-// Вспомогательный метод для кнопок ролей (всё ещё внутри одного класса)
+  // Вспомогательный метод для кнопок ролей (всё ещё внутри одного класса)
   Widget _buildRoleButton(
       BuildContext ctx,
       IconData icon,
@@ -1132,7 +1203,12 @@ class _ManagerSummaryPageState extends State<ManagerSummaryPage> {
   }
 
   Future<void> _showCreateTeamBottomSheet(BuildContext context) async {
-    final controller = TextEditingController();
+    // Скрываем клавиатуру перед открытием
+    FocusScope.of(context).unfocus();
+
+    // Добавляем небольшую задержку для гарантии скрытия клавиатуры
+    await Future.delayed(const Duration(milliseconds: 50));
+    if (!mounted) return;
 
     await showModalBottomSheet(
       context: context,
@@ -1142,98 +1218,16 @@ class _ManagerSummaryPageState extends State<ManagerSummaryPage> {
       ),
       backgroundColor: Theme.of(context).colorScheme.surface,
       builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 12,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Дрэг-хендл (индикатор)
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).dividerColor,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Заголовок
-              Text(
-                'Создать новую команду',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // Поле ввода
-              TextField(
-                controller: controller,
-                autofocus: true,
-                textInputAction: TextInputAction.done,
-                onSubmitted: (value) {
-                  if (value.trim().isNotEmpty) {
-                    _createTeamAndClose(ctx, controller.text.trim(), context);
-                  }
-                },
-                decoration: InputDecoration(
-                  hintText: 'Название команды',
-                  filled: true,
-                  fillColor: Theme.of(context).colorScheme.surfaceVariant,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
-                  prefixIcon: const Icon(Icons.group, color: Colors.grey),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // Кнопка создания
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    if (controller.text.trim().isNotEmpty) {
-                      _createTeamAndClose(ctx, controller.text.trim(), context);
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF722ED1),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    elevation: 2,
-                    shadowColor: const Color(0xFF722ED1).withOpacity(0.3),
-                    textStyle: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  child: const Text('Создать команду'),
-                ),
-              ),
-              const SizedBox(height: 8),
-            ],
-          ),
+        return _CreateTeamSheetContent(
+          onTeamCreated: () {
+            if (Navigator.canPop(ctx)) {
+              Navigator.of(ctx).pop();
+            }
+            _load();
+          },
         );
       },
-    ).then((_) => controller.dispose()); // Автоматически освобождаем контроллер
+    );
   }
 
   Future<void> _createTeamAndClose(
@@ -1260,6 +1254,9 @@ class _ManagerSummaryPageState extends State<ManagerSummaryPage> {
   }
 
   Future<void> _showTeamActionsBottomSheet(BuildContext context, TeamWithEmployees team) async {
+    // Скрываем клавиатуру перед открытием
+    FocusScope.of(context).unfocus();
+
     const Color brandRed = Colors.red;
     const Color brandColor = Color(0xFF722ED1); // на случай, если захотите использовать фиолетовый для других действий
 
@@ -1273,110 +1270,121 @@ class _ManagerSummaryPageState extends State<ManagerSummaryPage> {
       ),
       backgroundColor: Theme.of(context).colorScheme.surface,
       builder: (ctx) {
-        return ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(ctx).size.height * 0.9,
-          ),
-          child: SingleChildScrollView(
-            padding: EdgeInsets.only(
-              left: 16,
-              right: 16,
-              top: 12,
-              bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {
+            FocusScope.of(ctx).unfocus();
+          },
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(ctx).size.height * 0.9,
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Индикатор закрытия
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).dividerColor,
-                      borderRadius: BorderRadius.circular(2),
+            child: SingleChildScrollView(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 12,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Индикатор закрытия
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Theme.of(ctx).dividerColor,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 16),
+                  const SizedBox(height: 16),
 
-                Text(
-                  'Действия с командой',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // === Кнопка: Удалить команду ===
-                Material(
-                  type: MaterialType.transparency,
-                  child: Ink(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.1),
-                          blurRadius: 4,
-                          offset: const Offset(0, 1),
-                        ),
-                      ],
+                  Text(
+                    'Действия с командой',
+                    style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
-                    child: InkWell(
-                      onTap: () async {
-                        final confirm = await _showConfirmationDialog(
-                          context,
-                          'Удалить команду',
-                          'Вы уверены, что хотите удалить команду "${team.team.name}"?\nВсе участники будут перемещены в "Без команды".',
-                        );
-                        if (confirm == true) {
-                          try {
-                            await ManagementService().deleteTeam(team.team.id);
-                            if (Navigator.canPop(ctx)) Navigator.of(ctx).pop();
-                            _load();
-                          } catch (e) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Ошибка: $e')),
-                              );
+                  ),
+                  const SizedBox(height: 16),
+
+                  // === Кнопка: Удалить команду ===
+                  Material(
+                    type: MaterialType.transparency,
+                    child: Ink(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      child: InkWell(
+                        onTap: () async {
+                          // Скрываем клавиатуру перед действием
+                          FocusScope.of(ctx).unfocus();
+
+                          final confirm = await _showConfirmationDialog(
+                            context,
+                            'Удалить команду',
+                            'Вы уверены, что хотите удалить команду "${team.team.name}"?\nВсе участники будут перемещены в "Без команды".',
+                          );
+                          if (confirm == true) {
+                            try {
+                              await ManagementService().deleteTeam(team.team.id);
+                              if (Navigator.canPop(ctx)) Navigator.of(ctx).pop();
+                              _load();
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Ошибка: $e')),
+                                );
+                              }
                             }
                           }
-                        }
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      hoverColor: brandRed.withOpacity(0.08),   // ← красный ховер (не серый!)
-                      splashColor: brandRed.withOpacity(0.15),  // ← красный сплеш
-                      highlightColor: Colors.transparent,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete, color: brandRed, size: 20),
-                            const SizedBox(width: 12),
-                            Text(
-                              'Удалить команду',
-                              style: const TextStyle(
-                                fontSize: 15,
-                                color: Colors.black87,
-                                fontWeight: FontWeight.w500,
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        hoverColor: brandRed.withOpacity(0.08),   // ← красный ховер (не серый!)
+                        splashColor: brandRed.withOpacity(0.15),  // ← красный сплеш
+                        highlightColor: Colors.transparent,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                          child: Row(
+                            children: [
+                              Icon(Icons.delete, color: brandRed, size: 20),
+                              const SizedBox(width: 12),
+                              Text(
+                                'Удалить команду',
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  color: Colors.black87,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
 
-                const SizedBox(height: 16),
-              ],
+                  const SizedBox(height: 16),
+                ],
+              ),
             ),
           ),
         );
       },
-    );
+    ).then((_) {
+      FocusScope.of(context).unfocus();
+    });
   }
 
   Future<bool?> _showConfirmationDialog(
@@ -1384,6 +1392,9 @@ class _ManagerSummaryPageState extends State<ManagerSummaryPage> {
       String title,
       String content,
       ) async {
+    // Скрываем клавиатуру перед показом диалога
+    FocusScope.of(context).unfocus();
+
     return await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -1404,87 +1415,104 @@ class _ManagerSummaryPageState extends State<ManagerSummaryPage> {
   }
 
   void _showDeleteConfirmationBottomSheet(BuildContext context, Employee employee) {
+    // Скрываем клавиатуру перед открытием
+    FocusScope.of(context).unfocus();
+
     showModalBottomSheet(
       context: context,
       useRootNavigator: true,
       isScrollControlled: true,
       builder: (ctx) {
-        return Container(
-          padding: EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 16,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Индикатор BottomSheet
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[400],
-                    borderRadius: BorderRadius.circular(2),
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {
+            FocusScope.of(ctx).unfocus();
+          },
+          child: Container(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 16,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Индикатор BottomSheet
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[400],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-              // Заголовок
-              Text(
-                'Удалить ${employee.fullname}?',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Сотрудник будет полностью удалён из компании. Это действие нельзя отменить.',
-                style: TextStyle(color: Colors.red, fontSize: 12),
-              ),
-              const SizedBox(height: 24),
+                // Заголовок
+                Text(
+                  'Удалить ${employee.fullname}?',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Сотрудник будет полностью удалён из компании. Это действие нельзя отменить.',
+                  style: TextStyle(color: Colors.red, fontSize: 12),
+                ),
+                const SizedBox(height: 24),
 
-              // Кнопка подтверждения
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    foregroundColor: Colors.white,
+                // Кнопка подтверждения
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: () async {
+                      // Скрываем клавиатуру перед действием
+                      FocusScope.of(ctx).unfocus();
+
+                      Navigator.of(ctx).pop(); // закрыть BottomSheet
+
+                      try {
+                        await _service.removeMemberFromCompany(employee.id);
+                        if (context.mounted) {
+                          _load();
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Ошибка: $e')),
+                          );
+                        }
+                      }
+                    },
+                    child: const Text('Удалить навсегда'),
                   ),
-                  onPressed: () async {
-                    Navigator.of(ctx).pop(); // закрыть BottomSheet
+                ),
 
-                    try {
-                      await _service.removeMemberFromCompany(employee.id);
-                      if (context.mounted) {
-                        _load();
-                      }
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Ошибка: $e')),
-                        );
-                      }
-                    }
+                const SizedBox(height: 12),
+
+                // Кнопка отмены
+                TextButton(
+                  onPressed: () {
+                    FocusScope.of(ctx).unfocus();
+                    Navigator.of(ctx).pop();
                   },
-                  child: const Text('Удалить навсегда'),
+                  child: const Text('Отмена'),
                 ),
-              ),
-
-              const SizedBox(height: 12),
-
-              // Кнопка отмены
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('Отмена'),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
-    );
+    ).then((_) {
+      FocusScope.of(context).unfocus();
+    });
   }
 
   // === НОВАЯ ТАБЛИЦА: ЗАПРОСЫ НА ДОБАВЛЕНИЕ ===
@@ -1601,6 +1629,9 @@ class _ManagerSummaryPageState extends State<ManagerSummaryPage> {
   }
 
   void _showJoinRequestActionsBottomSheet(BuildContext context, UserJoinRequest request) {
+    // Скрываем клавиатуру перед открытием
+    FocusScope.of(context).unfocus();
+
     showModalBottomSheet(
       context: context,
       useRootNavigator: true,
@@ -1609,105 +1640,282 @@ class _ManagerSummaryPageState extends State<ManagerSummaryPage> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) {
-        return Container(
-          padding: EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 12,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).dividerColor,
-                    borderRadius: BorderRadius.circular(2),
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {
+            FocusScope.of(ctx).unfocus();
+          },
+          child: Container(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 12,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).dividerColor,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Запрос от ${request.fullName}',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+                const SizedBox(height: 16),
+                Text(
+                  'Запрос от ${request.fullName}',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Дата: ${request.createdAt.toLocal().toString().substring(0, 16)}',
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-              const SizedBox(height: 24),
+                const SizedBox(height: 8),
+                Text(
+                  'Дата: ${request.createdAt.toLocal().toString().substring(0, 16)}',
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                const SizedBox(height: 24),
 
-              // Кнопка "Принять"
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF722ED1),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  onPressed: () async {
-                    Navigator.of(ctx).pop();
-                    try {
-                      await _service.respondToManagerRequest(request.requestId, true);
-                      _load();
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Ошибка при принятии: $e')),
-                        );
+                // Кнопка "Принять"
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF722ED1),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    onPressed: () async {
+                      // Скрываем клавиатуру перед действием
+                      FocusScope.of(ctx).unfocus();
+
+                      Navigator.of(ctx).pop();
+                      try {
+                        await _service.respondToManagerRequest(request.requestId, true);
+                        _load();
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Ошибка при принятии: $e')),
+                          );
+                        }
                       }
-                    }
-                  },
-                  child: const Text('Принять'),
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // Кнопка "Отклонить"
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Colors.red),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    },
+                    child: const Text('Принять'),
                   ),
-                  onPressed: () async {
-                    Navigator.of(ctx).pop();
-                    try {
-                      await _service.respondToManagerRequest(request.requestId, false);
-                      _load();
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Ошибка при отклонении: $e')),
-                        );
-                      }
-                    }
-                  },
-                  child: const Text('Отклонить', style: TextStyle(color: Colors.red)),
                 ),
-              ),
-              const SizedBox(height: 12),
+                const SizedBox(height: 12),
 
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('Отмена'),
-              ),
-            ],
+                // Кнопка "Отклонить"
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.red),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    onPressed: () async {
+                      // Скрываем клавиатуру перед действием
+                      FocusScope.of(ctx).unfocus();
+
+                      Navigator.of(ctx).pop();
+                      try {
+                        await _service.respondToManagerRequest(request.requestId, false);
+                        _load();
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Ошибка при отклонении: $e')),
+                          );
+                        }
+                      }
+                    },
+                    child: const Text('Отклонить', style: TextStyle(color: Colors.red)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                TextButton(
+                  onPressed: () {
+                    FocusScope.of(ctx).unfocus();
+                    Navigator.of(ctx).pop();
+                  },
+                  child: const Text('Отмена'),
+                ),
+              ],
+            ),
           ),
         );
       },
+    ).then((_) {
+      FocusScope.of(context).unfocus();
+    });
+  }
+}
+
+// Отдельный StatefulWidget для создания команды
+class _CreateTeamSheetContent extends StatefulWidget {
+  final VoidCallback onTeamCreated;
+
+  const _CreateTeamSheetContent({required this.onTeamCreated});
+
+  @override
+  _CreateTeamSheetContentState createState() => _CreateTeamSheetContentState();
+}
+
+class _CreateTeamSheetContentState extends State<_CreateTeamSheetContent> {
+  late TextEditingController _controller;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        FocusScope.of(context).unfocus();
+      },
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 12,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Дрэг-хендл (индикатор)
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).dividerColor,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Заголовок
+            Text(
+              'Создать новую команду',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Поле ввода
+            TextField(
+              controller: _controller,
+              autofocus: true,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (value) {
+                if (value.trim().isNotEmpty) {
+                  _createTeam(value.trim());
+                }
+              },
+              decoration: InputDecoration(
+                hintText: 'Название команды',
+                filled: true,
+                fillColor: Theme.of(context).colorScheme.surfaceVariant,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
+                prefixIcon: const Icon(Icons.group, color: Colors.grey),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Кнопка создания
+            SizedBox(
+              width: double.infinity,
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : ElevatedButton(
+                onPressed: () {
+                  if (_controller.text.trim().isNotEmpty) {
+                    _createTeam(_controller.text.trim());
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF722ED1),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  elevation: 2,
+                  shadowColor: const Color(0xFF722ED1).withOpacity(0.3),
+                  textStyle: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                child: const Text('Создать команду'),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
     );
+  }
+
+  Future<void> _createTeam(String teamName) async {
+    if (_isLoading) return;
+
+    // Скрываем клавиатуру
+    FocusScope.of(context).unfocus();
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await ManagementService().createTeam(teamName);
+      if (mounted) {
+        Navigator.of(context).pop();
+        widget.onTeamCreated();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Не удалось создать команду: ${e.toString()}'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 }
